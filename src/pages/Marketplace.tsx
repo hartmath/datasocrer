@@ -78,7 +78,7 @@ const Marketplace = () => {
 
   const handleAddToCart = async (dataset: Dataset) => {
     try {
-      await addToCart(dataset.id, dataset.price);
+      await addToCart(dataset.id, dataset.price_cents);
       success('Added to cart', `${dataset.title} has been added to your cart`);
     } catch (error) {
       error('Failed to add to cart', 'Please try again');
@@ -314,11 +314,11 @@ const Marketplace = () => {
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <span className="text-2xl font-bold text-gray-900">{formatPrice(dataset.price)}</span>
-                        {dataset.original_price && (
-                          <span className="text-lg text-gray-500 line-through ml-2">{formatPrice(dataset.original_price)}</span>
+                        <span className="text-2xl font-bold text-gray-900">{formatPrice(dataset.price_cents)}</span>
+                        {dataset.original_price_cents && (
+                          <span className="text-lg text-gray-500 line-through ml-2">{formatPrice(dataset.original_price_cents)}</span>
                         )}
-                        <span className="text-sm text-gray-500 ml-1">/lead</span>
+                        <span className="text-sm text-gray-500 ml-1">/dataset</span>
                       </div>
                       <div className="flex gap-2">
                         <button 

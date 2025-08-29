@@ -70,7 +70,7 @@ const DatasetDetail = () => {
     if (!dataset) return;
     
     try {
-      await addToCart(dataset.id, dataset.price);
+      await addToCart(dataset.id, dataset.price_cents);
       console.log('Added to cart:', dataset.title);
     } catch (error) {
       console.error('Error adding to cart:', error);

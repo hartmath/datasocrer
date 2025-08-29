@@ -8,9 +8,33 @@ export const useCart = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
+  // Load cart from localStorage for non-authenticated users
+  const loadLocalCart = () => {
+    try {
+      const localCart = localStorage.getItem('cart_items');
+      return localCart ? JSON.parse(localCart) : [];
+    } catch (error) {
+      console.error('Error loading local cart:', error);
+      return [];
+    }
+  };
+
+  // Save cart to localStorage
+  const saveLocalCart = (items: CartItem[]) => {
+    try {
+      localStorage.setItem('cart_items', JSON.stringify(items));
+    } catch (error) {
+      console.error('Error saving local cart:', error);
+    }
+  };
+
   const fetchCartItems = async () => {
+    setLoading(true);
+    
     if (!user) {
-      setCartItems([]);
+      // Load from localStorage for non-authenticated users
+      const localCartItems = loadLocalCart();
+      setCartItems(localCartItems);
       setLoading(false);
       return;
     }
@@ -43,7 +67,56 @@ export const useCart = () => {
 
   const addToCart = async (datasetId: string, price: number) => {
     if (!user) {
-      throw new Error('Please sign in to add items to cart');
+      // Handle cart for non-authenticated users using localStorage
+      try {
+        // Get dataset details from database for local cart
+        if (!supabase) {
+          throw new Error('Database not available');
+        }
+
+        const { data: dataset, error } = await supabase
+          .from('datasets')
+          .select('*')
+          .eq('id', datasetId)
+          .single();
+
+        if (error) throw error;
+
+        const currentItems = loadLocalCart();
+        const existingIndex = currentItems.findIndex((item: CartItem) => item.dataset.id === datasetId);
+        
+        if (existingIndex >= 0) {
+          // Update quantity if item already exists
+          currentItems[existingIndex].quantity += 1;
+        } else {
+          // Add new item
+          const newItem: CartItem = {
+            id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            dataset: {
+              id: dataset.id,
+              title: dataset.title,
+              price_cents: dataset.price_cents,
+              slug: dataset.slug,
+              description: dataset.description,
+              provider: dataset.provider
+            },
+            price: dataset.price_cents,
+            quantity: 1,
+            user_id: 'local',
+            dataset_id: datasetId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          currentItems.push(newItem);
+        }
+        
+        saveLocalCart(currentItems);
+        setCartItems(currentItems);
+        return currentItems;
+      } catch (error) {
+        console.error('Error adding to local cart:', error);
+        throw error;
+      }
     }
     
     if (!supabase) {
@@ -71,6 +144,15 @@ export const useCart = () => {
   };
 
   const removeFromCart = async (itemId: string) => {
+    if (!user) {
+      // Handle local cart removal
+      const currentItems = loadLocalCart();
+      const filteredItems = currentItems.filter((item: CartItem) => item.id !== itemId);
+      saveLocalCart(filteredItems);
+      setCartItems(filteredItems);
+      return;
+    }
+
     if (!supabase) {
       throw new Error('Database not available');
     }
@@ -91,7 +173,10 @@ export const useCart = () => {
 
   const clearCart = async () => {
     if (!user) {
-      throw new Error('Please sign in to clear cart');
+      // Clear local cart
+      saveLocalCart([]);
+      setCartItems([]);
+      return;
     }
 
     if (!supabase) {
@@ -113,7 +198,10 @@ export const useCart = () => {
   };
 
   const getCartTotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cartItems.reduce((total, item) => {
+      const itemPrice = item.dataset?.price_cents || item.price;
+      return total + (itemPrice * item.quantity);
+    }, 0);
   };
 
   const getCartCount = () => {
