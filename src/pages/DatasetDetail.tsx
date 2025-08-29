@@ -20,6 +20,7 @@ import { supabase } from '../lib/supabase';
 import { Dataset, Review } from '../types';
 import { useCartContext } from '../contexts/CartContext';
 import { formatPrice } from '../lib/stripe';
+import { useToast } from '../components/Toast';
 
 const DatasetDetail = () => {
   const { slug } = useParams();
@@ -28,6 +29,7 @@ const DatasetDetail = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const { addToCart } = useCartContext();
+  const { success, error } = useToast();
 
   useEffect(() => {
     const fetchDataset = async () => {
@@ -71,9 +73,10 @@ const DatasetDetail = () => {
     
     try {
       await addToCart(dataset.id, dataset.price_cents);
-      console.log('Added to cart:', dataset.title);
+      success('Added to cart', `${dataset.title} has been added to your cart`);
     } catch (error) {
       console.error('Error adding to cart:', error);
+      error('Failed to add to cart', 'Please try again');
     }
   };
 

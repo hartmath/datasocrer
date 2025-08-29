@@ -124,19 +124,62 @@ export const useCart = () => {
     }
 
     try {
-      const { data, error } = await supabase
+      console.log('Adding to cart for authenticated user:', user.id, 'dataset:', datasetId);
+      
+      // First check if item already exists
+      const { data: existingItems, error: checkError } = await supabase
         .from('cart_items')
-        .upsert({
-          user_id: user.id,
-          dataset_id: datasetId,
-          price,
-          quantity: 1
-        })
-        .select();
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('dataset_id', datasetId);
 
-      if (error) throw error;
+      if (checkError) {
+        console.error('Error checking existing items:', checkError);
+        throw checkError;
+      }
+      
+      console.log('Existing items found:', existingItems?.length || 0);
+
+      if (existingItems && existingItems.length > 0) {
+        // Update existing item quantity
+        const existingItem = existingItems[0];
+        console.log('Updating existing item:', existingItem.id);
+        const { data, error } = await supabase
+          .from('cart_items')
+          .update({ 
+            quantity: existingItem.quantity + 1,
+            price: price // Update price in case it changed
+          })
+          .eq('id', existingItem.id)
+          .select();
+
+        if (error) {
+          console.error('Error updating cart item:', error);
+          throw error;
+        }
+        console.log('Successfully updated cart item');
+      } else {
+        // Insert new item
+        console.log('Inserting new cart item');
+        const { data, error } = await supabase
+          .from('cart_items')
+          .insert({
+            user_id: user.id,
+            dataset_id: datasetId,
+            price: price,
+            quantity: 1
+          })
+          .select();
+
+        if (error) {
+          console.error('Error inserting cart item:', error);
+          throw error;
+        }
+        console.log('Successfully inserted cart item');
+      }
+
       await fetchCartItems();
-      return data;
+      return true;
     } catch (error) {
       console.error('Error adding to cart:', error);
       throw error;
