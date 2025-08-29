@@ -63,7 +63,7 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <ContentProvider>
-            <Router>
+          <Router>
             <div className="min-h-screen bg-white">
               <Header />
               <Routes>
@@ -94,7 +94,7 @@ function App() {
                   <Route path="/lead-import" element={<LeadImportDashboard />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
-                </Routes>
+              </Routes>
               <Footer />
               <ToastContainer toasts={toasts} onClose={removeToast} />
             </div>

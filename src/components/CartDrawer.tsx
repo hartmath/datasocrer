@@ -107,15 +107,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm text-gray-600 text-center">Sign in to proceed with checkout</p>
-                    <button
-                      onClick={handleCheckout}
+                <button
+                  onClick={handleCheckout}
                       className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-3 px-4 rounded-lg font-medium transition-all duration-300 flex items-center justify-center shadow-lg shadow-green-500/25"
-                    >
+                >
                       <CreditCard className="w-5 h-5 mr-2" />
                       Sign In to Checkout
                     </button>
                   </div>
-                )}
+                  )}
                 
                 <button
                   onClick={clearCart}
