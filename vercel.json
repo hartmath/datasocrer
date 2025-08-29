@@ -1,49 +1,32 @@
 {
-  "version": 2,
-  "builds": [
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "source": "/api/webhooks/leads/facebook/(.*)",
+      "destination": "/api/webhooks/facebook-webhook.js"
+    },
+    {
+      "source": "/api/webhooks/leads/google/(.*)",
+      "destination": "/api/webhooks/google-webhook.js"
+    },
+    {
+      "source": "/api/webhooks/leads/linkedin/(.*)",
+      "destination": "/api/webhooks/linkedin-webhook.js"
+    },
+    {
+      "source": "/api/webhooks/leads/custom/(.*)",
+      "destination": "/api/webhooks/custom-webhook.js"
+    },
+    {
+      "source": "/api/auto-recharge",
+      "destination": "/api/auto-recharge.js"
+    },
+    {
+      "source": "/((?!api).*)",
+      "destination": "/index.html"
     }
   ],
-  "routes": [
-    {
-      "src": "/api/webhooks/leads/facebook/([^/]+)",
-      "dest": "/api/webhooks/facebook-webhook.js"
-    },
-    {
-      "src": "/api/webhooks/leads/google/([^/]+)",
-      "dest": "/api/webhooks/google-webhook.js"
-    },
-    {
-      "src": "/api/webhooks/leads/linkedin/([^/]+)",
-      "dest": "/api/webhooks/linkedin-webhook.js"
-    },
-    {
-      "src": "/api/webhooks/leads/custom/([^/]+)",
-      "dest": "/api/webhooks/custom-webhook.js"
-    },
-    {
-      "src": "/api/auto-recharge",
-      "dest": "/api/auto-recharge.js"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
-  "env": {
-    "VITE_SUPABASE_URL": "@vite_supabase_url",
-    "VITE_SUPABASE_ANON_KEY": "@vite_supabase_anon_key",
-    "VITE_STRIPE_PUBLISHABLE_KEY": "@vite_stripe_publishable_key",
-    "VITE_FACEBOOK_APP_ID": "@vite_facebook_app_id"
-  },
   "functions": {
     "api/webhooks/*.js": {
       "maxDuration": 30
