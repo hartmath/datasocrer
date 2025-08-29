@@ -64,9 +64,9 @@ const Marketplace = () => {
   const sortedDatasets = [...filteredDatasets].sort((a, b) => {
     switch (sortBy) {
       case 'price-low':
-        return a.price - b.price;
+        return a.price_cents - b.price_cents;
       case 'price-high':
-        return b.price - a.price;
+        return b.price_cents - a.price_cents;
       case 'rating':
         return b.rating - a.rating;
       case 'downloads':
