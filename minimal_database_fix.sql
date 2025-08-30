@@ -1,0 +1,111 @@
+-- MINIMAL DATABASE FIX - Essential tables only
+-- Run this to fix immediate console errors
+
+-- Enable extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 1. Create content_items table (fixes 404 error)
+CREATE TABLE IF NOT EXISTS content_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  key text UNIQUE NOT NULL,
+  type text NOT NULL CHECK (type IN ('text', 'image', 'html')),
+  value text NOT NULL DEFAULT '',
+  label text NOT NULL,
+  section text NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- 2. Create user_balances table (fixes 404 error)  
+CREATE TABLE IF NOT EXISTS user_balances (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  balance_cents integer NOT NULL DEFAULT 0 CHECK (balance_cents >= 0),
+  reserved_cents integer NOT NULL DEFAULT 0 CHECK (reserved_cents >= 0),
+  last_recharge_at timestamptz,
+  auto_recharge_enabled boolean DEFAULT false,
+  recharge_threshold_cents integer DEFAULT 10000,
+  recharge_amount_cents integer DEFAULT 50000,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- 3. Create wishlist_items table (fixes 400 error)
+-- Note: Removing FK constraint to datasets to avoid dependency issues
+CREATE TABLE IF NOT EXISTS wishlist_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  dataset_id uuid NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, dataset_id)
+);
+
+-- 4. Enable Row Level Security
+ALTER TABLE content_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_balances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wishlist_items ENABLE ROW LEVEL SECURITY;
+
+-- 5. Create basic policies (skip if they already exist)
+DO $$
+BEGIN
+  -- Content items policies
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'content_items' 
+    AND policyname = 'Anyone can view content items'
+  ) THEN
+    CREATE POLICY "Anyone can view content items"
+      ON content_items FOR SELECT TO anon, authenticated
+      USING (true);
+  END IF;
+
+  -- User balances policies  
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'user_balances' 
+    AND policyname = 'Users can view their own balance'
+  ) THEN
+    CREATE POLICY "Users can view their own balance"
+      ON user_balances FOR SELECT TO authenticated
+      USING (auth.uid() = user_id);
+  END IF;
+
+  -- Wishlist policies
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'wishlist_items' 
+    AND policyname = 'Users can view their own wishlist items'
+  ) THEN
+    CREATE POLICY "Users can view their own wishlist items"
+      ON wishlist_items FOR SELECT TO authenticated
+      USING (auth.uid() = user_id);
+  END IF;
+EXCEPTION
+  WHEN duplicate_object THEN
+    NULL; -- Ignore if policies already exist
+END $$;
+
+-- 6. Add essential content data
+INSERT INTO content_items (key, type, value, label, section) VALUES
+('site_name', 'text', 'DataCSV', 'Site Name', 'global'),
+('site_tagline', 'text', 'Premium Data Marketplace', 'Site Tagline', 'global'),
+('hero_title', 'text', 'Find Premium Data for Your Business', 'Hero Title', 'home'),
+('hero_subtitle', 'text', 'Access verified, high-quality datasets to power your analytics and business intelligence', 'Hero Subtitle', 'home'),
+('footer_description', 'text', 'Your trusted partner for premium data intelligence and business insights.', 'Footer Description', 'global')
+ON CONFLICT (key) DO NOTHING;
+
+-- 7. Create user balances for any existing users
+INSERT INTO user_balances (user_id, balance_cents, reserved_cents, auto_recharge_enabled, recharge_threshold_cents, recharge_amount_cents)
+SELECT 
+  id,
+  0,
+  0,
+  false,
+  10000,
+  50000
+FROM auth.users 
+WHERE id NOT IN (SELECT user_id FROM user_balances WHERE user_id IS NOT NULL)
+ON CONFLICT (user_id) DO NOTHING;
