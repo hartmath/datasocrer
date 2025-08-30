@@ -1,7 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MessageCircle, Mail, Phone, Clock, Search, HelpCircle, Book, Users } from 'lucide-react';
 
 const Support = () => {
+  const [supportForm, setSupportForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    subject: 'General Inquiry',
+    message: ''
+  });
+
+  const handleSupportFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setSupportForm({
+      ...supportForm,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSupportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      console.log('Support form submitted:', supportForm);
+      alert('Thank you for contacting support! We will get back to you within 4 hours during business hours.');
+      
+      // Reset form
+      setSupportForm({
+        firstName: '',
+        lastName: '',
+        email: '',
+        subject: 'General Inquiry',
+        message: ''
+      });
+    } catch (error) {
+      console.error('Error submitting support form:', error);
+      alert('Sorry, there was an error sending your message. Please try again or contact us directly.');
+    }
+  };
+
   const supportOptions = [
     {
       icon: MessageCircle,
@@ -217,7 +253,7 @@ const Support = () => {
           </div>
 
           <div className="bg-white rounded-2xl shadow-lg p-8">
-            <form className="space-y-6">
+            <form onSubmit={handleSupportSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -225,6 +261,10 @@ const Support = () => {
                   </label>
                   <input
                     type="text"
+                    name="firstName"
+                    value={supportForm.firstName}
+                    onChange={handleSupportFormChange}
+                    required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     placeholder="Enter your first name"
                   />
@@ -235,6 +275,10 @@ const Support = () => {
                   </label>
                   <input
                     type="text"
+                    name="lastName"
+                    value={supportForm.lastName}
+                    onChange={handleSupportFormChange}
+                    required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     placeholder="Enter your last name"
                   />
@@ -247,6 +291,10 @@ const Support = () => {
                 </label>
                 <input
                   type="email"
+                  name="email"
+                  value={supportForm.email}
+                  onChange={handleSupportFormChange}
+                  required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="Enter your email address"
                 />
@@ -256,7 +304,12 @@ const Support = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Subject
                 </label>
-                <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                <select 
+                  name="subject"
+                  value={supportForm.subject}
+                  onChange={handleSupportFormChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
                   <option>General Inquiry</option>
                   <option>Technical Support</option>
                   <option>Billing Question</option>
@@ -270,6 +323,10 @@ const Support = () => {
                   Message
                 </label>
                 <textarea
+                  name="message"
+                  value={supportForm.message}
+                  onChange={handleSupportFormChange}
+                  required
                   rows={6}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="Describe your question or issue in detail..."

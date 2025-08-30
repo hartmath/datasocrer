@@ -58,10 +58,10 @@ const Hero = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8 sm:mb-12 px-4">
-            <a href="/marketplace" className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all duration-300 flex items-center justify-center text-sm sm:text-base shadow-lg shadow-green-500/25">
+            <Link to="/marketplace" className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all duration-300 flex items-center justify-center text-sm sm:text-base shadow-lg shadow-green-500/25">
               {getContent('home.hero.cta.primary', 'Browse Data Marketplace')}
               <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
-            </a>
+            </Link>
             <Link to="/contact" className="border-2 border-green-600 text-green-600 hover:bg-green-50 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base">
               {getContent('home.hero.cta.secondary', 'Request Custom Data')}
             </Link>

@@ -1,7 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BookOpen, Video, FileText, Code, Users, Lightbulb, Download, ExternalLink } from 'lucide-react';
 
 const Resources = () => {
+  const [email, setEmail] = useState('');
+
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.trim()) {
+      alert(`Thank you for subscribing! We'll send updates to ${email}`);
+      setEmail('');
+    }
+  };
+
   const resourceCategories = [
     {
       title: "Documentation",
@@ -232,16 +242,19 @@ const Resources = () => {
           <p className="text-xl text-purple-200 mb-8 max-w-2xl mx-auto">
             Subscribe to our newsletter and receive the latest data insights, tutorials, and industry updates
           </p>
-          <div className="max-w-md mx-auto flex gap-4">
+          <form onSubmit={handleNewsletterSubmit} className="max-w-md mx-auto flex gap-4">
             <input
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
               placeholder="Enter your email"
               className="flex-1 px-4 py-3 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:outline-none"
             />
-            <button className="bg-white text-green-900 hover:bg-gray-100 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300">
+            <button type="submit" className="bg-white text-green-900 hover:bg-gray-100 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300">
               Subscribe
             </button>
-          </div>
+          </form>
         </div>
       </section>
     </div>

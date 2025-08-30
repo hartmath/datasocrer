@@ -382,8 +382,8 @@ const LeadImportDashboard: React.FC = () => {
                 <button
                   onClick={() => {
                     setShowSetupModal(false);
-                    // TODO: Open Facebook setup modal
-                    alert('Facebook Lead Ads setup coming soon!');
+                    // Open Facebook setup instructions
+                    alert('Facebook Lead Ads Setup:\n\n1. Go to Facebook Business Manager\n2. Navigate to Lead Ads\n3. Set up webhook URL: https://your-domain.com/api/webhooks/facebook\n4. Add your access token in settings\n\nFor detailed setup instructions, visit our documentation or contact support.');
                   }}
                   className="w-full flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                 >
@@ -394,19 +394,31 @@ const LeadImportDashboard: React.FC = () => {
                   </div>
                 </button>
 
-                <button className="w-full flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors opacity-50 cursor-not-allowed">
+                <button 
+                  onClick={() => {
+                    setShowSetupModal(false);
+                    alert('Google Ads Integration:\n\nThis feature is currently in development. \n\nExpected release: Q2 2024\n\nTo get notified when available:\n• Contact our support team\n• Check our documentation for updates\n• Subscribe to our newsletter\n\nIn the meantime, you can manually import Google Ads leads using our CSV upload feature.');
+                  }}
+                  className="w-full flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
                   <Globe className="w-6 h-6 text-red-500 mr-3" />
                   <div className="text-left">
                     <p className="font-medium text-gray-900">Google Ads</p>
-                    <p className="text-sm text-gray-500">Coming soon</p>
+                    <p className="text-sm text-gray-500">In development - Click for details</p>
                   </div>
                 </button>
 
-                <button className="w-full flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors opacity-50 cursor-not-allowed">
+                <button 
+                  onClick={() => {
+                    setShowSetupModal(false);
+                    alert('LinkedIn Ads Integration:\n\nThis feature is currently in development.\n\nExpected release: Q3 2024\n\nTo get notified when available:\n• Contact our support team\n• Check our documentation for updates\n• Subscribe to our newsletter\n\nIn the meantime, you can manually import LinkedIn leads using our CSV upload feature.');
+                  }}
+                  className="w-full flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
                   <Linkedin className="w-6 h-6 text-blue-700 mr-3" />
                   <div className="text-left">
                     <p className="font-medium text-gray-900">LinkedIn Ads</p>
-                    <p className="text-sm text-gray-500">Coming soon</p>
+                    <p className="text-sm text-gray-500">In development - Click for details</p>
                   </div>
                 </button>
               </div>

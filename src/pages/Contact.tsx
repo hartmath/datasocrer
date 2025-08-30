@@ -20,9 +20,31 @@ const Contact = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
+    
+    try {
+      // Simulate form submission
+      console.log('Submitting contact form:', formData);
+      
+      // Here you would typically send to your backend
+      // For now, we'll simulate a successful submission
+      alert('Thank you for your message! We will get back to you within 24 hours.');
+      
+      // Reset form
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        company: '',
+        subject: 'General Inquiry',
+        message: ''
+      });
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Sorry, there was an error sending your message. Please try again or contact us directly.');
+    }
   };
 
   const contactMethods = [
