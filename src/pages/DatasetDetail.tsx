@@ -29,7 +29,7 @@ const DatasetDetail = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const { addToCart } = useCartContext();
-  const { success, error } = useToast();
+  const { success, error: showError } = useToast();
 
   useEffect(() => {
     const fetchDataset = async () => {
@@ -76,7 +76,7 @@ const DatasetDetail = () => {
       success('Added to cart', `${dataset.title} has been added to your cart`);
     } catch (error) {
       console.error('Error adding to cart:', error);
-      error('Failed to add to cart', 'Please try again');
+      showError('Failed to add to cart', 'Please try again');
     }
   };
 

@@ -124,7 +124,7 @@ export const useCart = () => {
     }
 
     try {
-      console.log('Adding to cart for authenticated user:', user.id, 'dataset:', datasetId);
+      console.log('Adding to cart for authenticated user:', user.id, 'dataset:', datasetId, 'price:', price);
       
       // First check if item already exists
       const { data: existingItems, error: checkError } = await supabase
@@ -135,7 +135,8 @@ export const useCart = () => {
 
       if (checkError) {
         console.error('Error checking existing items:', checkError);
-        throw checkError;
+        console.error('Error details:', JSON.stringify(checkError, null, 2));
+        throw new Error(`Failed to check existing cart items: ${checkError.message}`);
       }
       
       console.log('Existing items found:', existingItems?.length || 0);
@@ -155,12 +156,19 @@ export const useCart = () => {
 
         if (error) {
           console.error('Error updating cart item:', error);
-          throw error;
+          console.error('Update error details:', JSON.stringify(error, null, 2));
+          throw new Error(`Failed to update cart item: ${error.message}`);
         }
         console.log('Successfully updated cart item');
       } else {
         // Insert new item
-        console.log('Inserting new cart item');
+        console.log('Inserting new cart item with data:', {
+          user_id: user.id,
+          dataset_id: datasetId,
+          price: price,
+          quantity: 1
+        });
+        
         const { data, error } = await supabase
           .from('cart_items')
           .insert({
@@ -173,9 +181,10 @@ export const useCart = () => {
 
         if (error) {
           console.error('Error inserting cart item:', error);
-          throw error;
+          console.error('Insert error details:', JSON.stringify(error, null, 2));
+          throw new Error(`Failed to insert cart item: ${error.message}`);
         }
-        console.log('Successfully inserted cart item');
+        console.log('Successfully inserted cart item:', data);
       }
 
       await fetchCartItems();

@@ -28,7 +28,7 @@ const Marketplace = () => {
   const { categories, loading: categoriesLoading } = useCategories();
   const { addToCart } = useCartContext();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
-  const { success, error } = useToast();
+  const { success, error: showError } = useToast();
 
   const loading = datasetsLoading || categoriesLoading;
 
@@ -81,7 +81,8 @@ const Marketplace = () => {
       await addToCart(dataset.id, dataset.price_cents);
       success('Added to cart', `${dataset.title} has been added to your cart`);
     } catch (error) {
-      error('Failed to add to cart', 'Please try again');
+      console.error('Add to cart error:', error);
+      showError('Failed to add to cart', 'Please try again');
     }
   };
 
@@ -95,7 +96,8 @@ const Marketplace = () => {
         success('Added to wishlist', `${dataset.title} has been saved to your wishlist`);
       }
     } catch (err) {
-      error('Failed to update wishlist', 'Please try again');
+      console.error('Wishlist error:', err);
+      showError('Failed to update wishlist', 'Please try again');
     }
   };
 
