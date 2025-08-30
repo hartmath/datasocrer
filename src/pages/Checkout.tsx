@@ -41,7 +41,28 @@ const Checkout: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      // Validate cart before proceeding
+      if (!cartItems || cartItems.length === 0) {
+        setError('Your cart is empty. Please add items before checkout.');
+        return;
+      }
+
       const totalCents = getCartTotal();
+      console.log('Cart total in cents:', totalCents);
+      console.log('Cart items:', cartItems);
+
+      // Validate total amount
+      if (!totalCents || totalCents <= 0) {
+        setError('Invalid cart total. Please check your cart items.');
+        return;
+      }
+
+      // Ensure minimum amount for Stripe (50 cents)
+      if (totalCents < 50) {
+        setError('Order total must be at least $0.50 to process payment.');
+        return;
+      }
+
       const orderNumber = `ORDER-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       const paymentIntent = await createPaymentIntent({
@@ -52,9 +73,14 @@ const Checkout: React.FC = () => {
         customerEmail: user?.email,
         metadata: {
           user_id: user?.id || '',
-          items_count: cartItems.length.toString()
+          items_count: cartItems.length.toString(),
+          total_cents: totalCents.toString()
         }
       });
+
+      if (!paymentIntent.client_secret) {
+        throw new Error('Invalid payment intent received from server');
+      }
 
       setClientSecret(paymentIntent.client_secret);
     } catch (err: any) {
@@ -67,6 +93,8 @@ const Checkout: React.FC = () => {
         setError('Payment system not configured. Please ensure Stripe is properly set up in your deployment environment.');
       } else if (errorMessage.includes('API endpoints failed')) {
         setError('Payment processing unavailable. This usually means the backend API is not accessible.');
+      } else if (errorMessage.includes('Invalid payment intent')) {
+        setError('Payment system error. Please try again or contact support.');
       }
     } finally {
       setLoading(false);

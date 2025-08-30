@@ -67,9 +67,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                         by {item.dataset?.provider?.name}
                       </p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="font-semibold text-gray-900">
-                          {formatPrice(item.dataset?.price_cents || 0)}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-gray-900">
+                            {formatPrice((item.dataset?.price_cents || item.price) * item.quantity)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {formatPrice(item.dataset?.price_cents || item.price)} × {item.quantity}
+                          </span>
+                        </div>
                         <button
                           onClick={() => removeFromCart(item.id)}
                           className="text-red-600 hover:text-red-700 p-1"

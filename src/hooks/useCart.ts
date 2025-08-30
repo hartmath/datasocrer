@@ -250,10 +250,16 @@ export const useCart = () => {
   };
 
   const getCartTotal = () => {
-    return cartItems.reduce((total, item) => {
+    const total = cartItems.reduce((total, item) => {
+      // Use dataset.price_cents if available, otherwise use item.price (which should also be in cents)
       const itemPrice = item.dataset?.price_cents || item.price;
-      return total + (itemPrice * item.quantity);
+      const itemTotal = itemPrice * item.quantity;
+      console.log(`Item: ${item.dataset?.title || item.dataset_id}, Price: ${itemPrice}, Qty: ${item.quantity}, Total: ${itemTotal}`);
+      return total + itemTotal;
     }, 0);
+    
+    console.log('Cart total calculation:', total);
+    return total;
   };
 
   const getCartCount = () => {

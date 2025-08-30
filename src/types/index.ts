@@ -48,8 +48,8 @@ export interface Dataset {
   long_description?: string;
   category_id: string;
   provider_id: string;
-  price: number;
-  original_price?: number;
+  price_cents: number;
+  original_price_cents?: number;
   currency: string;
   size_description: string;
   record_count: number;
@@ -74,7 +74,7 @@ export interface CartItem {
   user_id: string;
   dataset_id: string;
   quantity: number;
-  price: number;
+  price: number; // Keep this as cents for compatibility
   created_at: string;
   dataset?: Dataset;
 }
