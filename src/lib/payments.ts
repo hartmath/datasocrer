@@ -144,44 +144,60 @@ export const createPaymentIntent = async (params: {
   metadata?: Record<string, string>;
 }): Promise<PaymentIntent> => {
   try {
-    // In a real application, this would call your backend API endpoint
-    // For now, we'll simulate the API call structure
-    const response = await fetch('/api/create-payment-intent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        amount: params.amount,
-        currency: params.currency,
-        customer_email: params.customerEmail,
-        metadata: {
-          order_id: params.orderId,
-          order_number: params.orderNumber,
-          ...params.metadata
-        }
-      }),
-    });
+    console.log('Creating payment intent for amount:', params.amount, 'cents');
+    
+    // Try different API endpoint approaches for better compatibility
+    const apiUrls = [
+      '/api/create-payment-intent',
+      `${window.location.origin}/api/create-payment-intent`,
+      'https://datacsv.vercel.app/api/create-payment-intent' // Fallback to production
+    ];
 
-    if (!response.ok) {
-      throw new Error(`Payment intent creation failed: ${response.statusText}`);
+    let lastError: Error | null = null;
+
+    for (const apiUrl of apiUrls) {
+      try {
+        console.log('Trying API endpoint:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            amount: params.amount,
+            currency: params.currency,
+            customer_email: params.customerEmail,
+            metadata: {
+              order_id: params.orderId,
+              order_number: params.orderNumber,
+              ...params.metadata
+            }
+          }),
+        });
+
+        if (response.ok) {
+          const paymentIntent = await response.json();
+          console.log('Payment intent created successfully:', paymentIntent.id);
+          return paymentIntent;
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      } catch (error) {
+        console.warn(`API endpoint ${apiUrl} failed:`, error);
+        lastError = error as Error;
+        continue;
+      }
     }
 
-    const paymentIntent = await response.json();
-    return paymentIntent;
+    // If all endpoints fail, throw the last error
+    throw lastError || new Error('All payment API endpoints failed');
 
   } catch (error) {
     console.error('Error creating payment intent:', error);
     
-    // For development/demo purposes, return a mock payment intent
-    // Remove this in production and implement proper backend endpoint
-    return {
-      id: `pi_mock_${Date.now()}`,
-      client_secret: `pi_mock_${Date.now()}_secret_mock`,
-      status: 'requires_payment_method',
-      amount: params.amount,
-      currency: params.currency
-    };
+    // Show user-friendly error message
+    throw new Error('Payment processing is currently unavailable. Please ensure your Stripe secret key is configured in your deployment environment.');
   }
 };
 

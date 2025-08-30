@@ -58,7 +58,16 @@ const Checkout: React.FC = () => {
 
       setClientSecret(paymentIntent.client_secret);
     } catch (err: any) {
-      setError(err.message || 'Failed to initialize payment');
+      console.error('Payment initialization error:', err);
+      const errorMessage = err.message || 'Failed to initialize payment';
+      setError(errorMessage);
+      
+      // Show more specific error messages
+      if (errorMessage.includes('Stripe secret key')) {
+        setError('Payment system not configured. Please ensure Stripe is properly set up in your deployment environment.');
+      } else if (errorMessage.includes('API endpoints failed')) {
+        setError('Payment processing unavailable. This usually means the backend API is not accessible.');
+      }
     } finally {
       setLoading(false);
     }
