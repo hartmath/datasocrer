@@ -115,9 +115,49 @@ const LeadImportDashboard: React.FC = () => {
   };
 
   const handleRecharge = async (amount: number) => {
-    // In a real implementation, this would redirect to Stripe checkout
-    console.log(`Recharge $${amount}`);
-    alert(`Redirecting to payment for $${amount} recharge...`);
+    if (!user) {
+      alert('Please sign in to add funds');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log(`Creating payment intent for $${amount} recharge`);
+
+      // Create payment intent for balance recharge
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amount * 100, // Convert to cents
+          currency: 'USD',
+          customer_email: user.email,
+          metadata: {
+            type: 'balance_recharge',
+            user_id: user.id,
+            amount_dollars: amount.toString()
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create payment intent: ${response.statusText}`);
+      }
+
+      const paymentIntent = await response.json();
+      
+      // Redirect to checkout with the payment intent
+      const checkoutUrl = `/checkout?payment_intent=${paymentIntent.client_secret}&type=recharge&amount=${amount}`;
+      window.location.href = checkoutUrl;
+      
+    } catch (error) {
+      console.error('Error creating recharge payment:', error);
+      alert(`Failed to initiate payment: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getPlatformIcon = (platform: string) => {

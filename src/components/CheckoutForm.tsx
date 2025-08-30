@@ -9,9 +9,11 @@ interface CheckoutFormProps {
   clientSecret: string;
   onSuccess: (orderId: string) => void;
   onError: (error: string) => void;
+  isRecharge?: boolean;
+  rechargeAmount?: string | null;
 }
 
-const CheckoutForm: React.FC<CheckoutFormProps> = ({ clientSecret, onSuccess, onError }) => {
+const CheckoutForm: React.FC<CheckoutFormProps> = ({ clientSecret, onSuccess, onError, isRecharge, rechargeAmount }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { user } = useAuth();
@@ -62,12 +64,21 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ clientSecret, onSuccess, on
     setPaymentError(null);
 
     try {
-      // First create the order in our database
-      const { order } = await createOrder({
-        user_id: user.id,
-        items: cartItems,
-        billing_details: billingDetails
-      });
+      let order: any;
+      
+      if (isRecharge) {
+        // For recharge, we don't create an order, just process the payment
+        // The order ID will be generated from the payment intent
+        order = { id: `recharge-${Date.now()}` };
+      } else {
+        // First create the order in our database for regular purchases
+        const orderResult = await createOrder({
+          user_id: user.id,
+          items: cartItems,
+          billing_details: billingDetails
+        });
+        order = orderResult.order;
+      }
 
       // Confirm the payment with Stripe
       const { error, paymentIntent } = await stripe.confirmPayment({
@@ -90,7 +101,31 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ clientSecret, onSuccess, on
         setPaymentError(error.message || 'Payment failed. Please try again.');
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         setPaymentSuccess(true);
-        clearCart();
+        
+        // Only clear cart for regular purchases, not recharge
+        if (!isRecharge) {
+          clearCart();
+        }
+        
+        // Handle balance recharge by adding funds to user account
+        if (isRecharge && rechargeAmount) {
+          try {
+            // Call API to add balance
+            await fetch('/api/add-balance', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user_id: user.id,
+                amount_cents: parseInt(rechargeAmount) * 100,
+                payment_intent_id: paymentIntent.id
+              })
+            });
+          } catch (balanceError) {
+            console.error('Error adding balance:', balanceError);
+            // Don't fail the whole payment for this
+          }
+        }
+        
         onSuccess(order.id);
       }
 
@@ -101,14 +136,19 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ clientSecret, onSuccess, on
     }
   };
 
-  const total = getCartTotal();
+  const total = isRecharge ? (parseInt(rechargeAmount || '0') * 100) : getCartTotal();
 
   if (paymentSuccess) {
     return (
       <div className="text-center py-8">
         <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
         <h3 className="text-xl font-semibold text-gray-900 mb-2">Payment Successful!</h3>
-        <p className="text-gray-600">Your order has been processed successfully.</p>
+        <p className="text-gray-600">
+          {isRecharge 
+            ? `$${rechargeAmount} has been added to your account balance.`
+            : 'Your order has been processed successfully.'
+          }
+        </p>
       </div>
     );
   }
@@ -118,14 +158,23 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ clientSecret, onSuccess, on
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Order Summary */}
         <div className="bg-gray-50 rounded-lg p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Order Summary</h3>
+          <h3 className="font-semibold text-gray-900 mb-3">
+            {isRecharge ? 'Recharge Summary' : 'Order Summary'}
+          </h3>
           <div className="space-y-2">
-            {cartItems.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span className="text-gray-600">{item.dataset.title}</span>
-                <span className="font-medium">{formatPrice(item.dataset.price_cents)}</span>
+            {isRecharge ? (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Account Balance Recharge</span>
+                <span className="font-medium">${rechargeAmount}</span>
               </div>
-            ))}
+            ) : (
+              cartItems.map((item) => (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span className="text-gray-600">{item.dataset.title}</span>
+                  <span className="font-medium">{formatPrice(item.dataset.price_cents)}</span>
+                </div>
+              ))
+            )}
             <div className="border-t pt-2 mt-2">
               <div className="flex justify-between font-semibold">
                 <span>Total</span>

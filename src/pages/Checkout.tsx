@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
-import { ArrowLeft, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCartContext } from '../contexts/CartContext';
 import { getStripe, createPaymentIntent, formatPrice } from '../lib/payments';
@@ -12,10 +12,16 @@ const Checkout: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const { cartItems, getCartTotal } = useCartContext();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Check if this is a balance recharge
+  const isRecharge = searchParams.get('type') === 'recharge';
+  const rechargeAmount = searchParams.get('amount');
+  const existingPaymentIntent = searchParams.get('payment_intent');
 
   useEffect(() => {
     if (authLoading) return;
@@ -26,28 +32,47 @@ const Checkout: React.FC = () => {
       return;
     }
 
-    if (cartItems.length === 0) {
-      // Redirect to marketplace if cart is empty
+    // For recharge, we don't need cart items
+    if (!isRecharge && cartItems.length === 0) {
+      // Redirect to marketplace if cart is empty and not a recharge
       navigate('/marketplace');
       return;
     }
 
-    // Create payment intent
-    initializePayment();
-  }, [user, authLoading, cartItems, navigate]);
+    // Use existing payment intent or create new one
+    if (existingPaymentIntent) {
+      setClientSecret(existingPaymentIntent);
+      setLoading(false);
+    } else {
+      initializePayment();
+    }
+  }, [user, authLoading, cartItems, navigate, isRecharge, existingPaymentIntent]);
 
   const initializePayment = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Validate cart before proceeding
-      if (!cartItems || cartItems.length === 0) {
-        setError('Your cart is empty. Please add items before checkout.');
-        return;
-      }
+      let totalCents: number;
+      let orderType: string;
 
-      const totalCents = getCartTotal();
+      if (isRecharge) {
+        // Handle balance recharge
+        if (!rechargeAmount) {
+          setError('Invalid recharge amount.');
+          return;
+        }
+        totalCents = parseInt(rechargeAmount) * 100; // Convert to cents
+        orderType = 'balance_recharge';
+      } else {
+        // Handle regular cart checkout
+        if (!cartItems || cartItems.length === 0) {
+          setError('Your cart is empty. Please add items before checkout.');
+          return;
+        }
+        totalCents = getCartTotal();
+        orderType = 'dataset_purchase';
+      }
       console.log('Cart total in cents:', totalCents);
       console.log('Cart items:', cartItems);
 
@@ -63,18 +88,22 @@ const Checkout: React.FC = () => {
         return;
       }
 
-      const orderNumber = `ORDER-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const orderNumber = isRecharge 
+        ? `RECHARGE-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        : `ORDER-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       const paymentIntent = await createPaymentIntent({
         amount: totalCents,
         currency: 'usd',
-        orderId: 'temp', // This will be replaced when order is created
+        orderId: isRecharge ? `recharge-${Date.now()}` : 'temp', // This will be replaced when order is created
         orderNumber,
         customerEmail: user?.email,
         metadata: {
           user_id: user?.id || '',
-          items_count: cartItems.length.toString(),
-          total_cents: totalCents.toString()
+          type: orderType,
+          items_count: isRecharge ? '0' : cartItems.length.toString(),
+          total_cents: totalCents.toString(),
+          ...(isRecharge && { recharge_amount: rechargeAmount })
         }
       });
 
@@ -102,7 +131,13 @@ const Checkout: React.FC = () => {
   };
 
   const handlePaymentSuccess = (orderId: string) => {
-    navigate(`/order-success?order_id=${orderId}`);
+    if (isRecharge) {
+      // For recharge, redirect back to lead import dashboard
+      navigate('/lead-import');
+    } else {
+      // For regular orders, go to order success page
+      navigate(`/order-success?order_id=${orderId}`);
+    }
   };
 
   const handlePaymentError = (error: string) => {
@@ -123,13 +158,13 @@ const Checkout: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  // Redirect if cart is empty
-  if (cartItems.length === 0) {
+  // Redirect if cart is empty (only for non-recharge)
+  if (!isRecharge && cartItems.length === 0) {
     return <Navigate to="/marketplace" replace />;
   }
 
   const stripePromise = getStripe();
-  const total = getCartTotal();
+  const total = isRecharge ? (parseInt(rechargeAmount || '0') * 100) : getCartTotal();
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
@@ -145,11 +180,20 @@ const Checkout: React.FC = () => {
           </button>
           
           <div className="flex items-center">
-            <ShoppingCart className="w-8 h-8 text-green-600 mr-3" />
+            {isRecharge ? (
+              <CreditCard className="w-8 h-8 text-green-600 mr-3" />
+            ) : (
+              <ShoppingCart className="w-8 h-8 text-green-600 mr-3" />
+            )}
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {isRecharge ? 'Add Funds' : 'Checkout'}
+              </h1>
               <p className="text-gray-600 mt-1">
-                Complete your purchase of {cartItems.length} item{cartItems.length !== 1 ? 's' : ''}
+                {isRecharge 
+                  ? `Add $${rechargeAmount} to your account balance`
+                  : `Complete your purchase of ${cartItems.length} item${cartItems.length !== 1 ? 's' : ''}`
+                }
               </p>
             </div>
           </div>
@@ -174,10 +218,32 @@ const Checkout: React.FC = () => {
           {/* Cart Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm border p-6 sticky top-24">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                {isRecharge ? 'Recharge Summary' : 'Order Summary'}
+              </h2>
               
-              <div className="space-y-4">
-                {cartItems.map((item) => (
+              {isRecharge ? (
+                // Recharge summary
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-3 py-3">
+                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                      <CreditCard className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900">Account Balance Recharge</h3>
+                      <p className="text-sm text-gray-500 mt-1">Add funds for lead imports</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">
+                        ${rechargeAmount}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Cart items summary  
+                <div className="space-y-4">
+                  {cartItems.map((item) => (
                   <div key={item.id} className="flex items-start space-x-3 py-3 border-b border-gray-100 last:border-b-0">
                     <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
                       <ShoppingCart className="w-5 h-5 text-gray-500" />
@@ -192,8 +258,9 @@ const Checkout: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
               
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex justify-between text-lg font-semibold text-gray-900">
@@ -247,6 +314,8 @@ const Checkout: React.FC = () => {
                     clientSecret={clientSecret}
                     onSuccess={handlePaymentSuccess}
                     onError={handlePaymentError}
+                    isRecharge={isRecharge}
+                    rechargeAmount={rechargeAmount}
                   />
                 </Elements>
               ) : (
