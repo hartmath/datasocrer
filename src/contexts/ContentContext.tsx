@@ -18,6 +18,7 @@ interface ContentContextType {
   loading: boolean;
   saveContent: () => Promise<void>;
   hasChanges: boolean;
+  resetContent: () => void;
 }
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
@@ -676,6 +677,11 @@ export const ContentProvider: React.FC<ContentProviderProps> = ({ children }) =>
     }
   };
 
+  const resetContent = () => {
+    setContent(defaultContent);
+    setHasChanges(false);
+  };
+
   return (
     <ContentContext.Provider value={{
       content,
@@ -683,7 +689,8 @@ export const ContentProvider: React.FC<ContentProviderProps> = ({ children }) =>
       getContent,
       loading,
       saveContent,
-      hasChanges
+      hasChanges,
+      resetContent
     }}>
       {children}
     </ContentContext.Provider>

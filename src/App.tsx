@@ -44,15 +44,33 @@ function App() {
   // Check if intro has been shown before
   useEffect(() => {
     const hasSeenIntro = localStorage.getItem('datacsv_intro_seen');
-    if (hasSeenIntro) {
-      setShowIntro(false);
-    }
+    // For development/testing, you can force show intro by commenting out this line
+    // if (hasSeenIntro) {
+    //   setShowIntro(false);
+    // }
+    
+    // Uncomment the line below to force show intro every time
+    setShowIntro(true);
   }, []);
 
   const handleIntroComplete = () => {
     localStorage.setItem('datacsv_intro_seen', 'true');
     setShowIntro(false);
   };
+
+  // Function to manually reset intro (for testing)
+  const resetIntro = () => {
+    localStorage.removeItem('datacsv_intro_seen');
+    setShowIntro(true);
+  };
+
+  // Add reset button to window for easy access during development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      (window as any).resetIntro = resetIntro;
+      console.log('🔧 Development mode: Use window.resetIntro() to reset the intro');
+    }
+  }, []);
 
   if (showIntro) {
     return <LogoIntro onComplete={handleIntroComplete} />;

@@ -5,14 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "deploy": "node scripts/deploy.js",
     "test:integration": "node scripts/test-integration.js",
     "webhook:test": "curl -X GET http://localhost:5173/api/webhooks/test-webhook",
     "db:migrate": "node scripts/deploy.js",
-    "build:production": "npm run build && npm run deploy"
+    "build:production": "npm run build && npm run deploy",
+    "setup-db": "node scripts/setup-database.js",
+    "db:setup": "node scripts/setup-database.js"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.9.2",

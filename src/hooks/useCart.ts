@@ -175,9 +175,9 @@ export const useCart = () => {
             user_id: user.id,
             dataset_id: datasetId,
             price: price,
-            quantity: 1
-          })
-          .select();
+          quantity: 1
+        })
+        .select();
 
         if (error) {
           console.error('Error inserting cart item:', error);
