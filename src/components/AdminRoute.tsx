@@ -18,6 +18,8 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   // To customize admin access, change the email below or set user_metadata.role
   const isAdmin = user?.email === 'admin@localhost.com' || 
                   user?.email === 'admin@datacsv.com' ||
+                  user?.email === 'admin@datasorcerer.com' ||  // Add your email here
+                  user?.email === 'hartmath@gmail.com' ||  // Add your email here
                   user?.user_metadata?.role === 'admin' ||
                   user?.user_metadata?.role === 'ADMIN';
 

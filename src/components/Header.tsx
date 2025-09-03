@@ -48,6 +48,8 @@ const Header: React.FC<HeaderProps> = () => {
 
   // Check if user is admin (you can customize this logic)
   const isAdmin = user?.email === 'admin@datacsv.com' || 
+                  user?.email === 'admin@datasorcerer.com' ||  // Add your email here
+                  user?.email === 'hartmath@gmail.com' ||  // Add your email here
                   (user?.user_metadata as any)?.role === 'admin';
 
   return (

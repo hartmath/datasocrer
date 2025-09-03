@@ -39,7 +39,10 @@ const UserMenu: React.FC = () => {
   }
 
   // Check if user is admin
-  const isAdmin = user?.email === 'admin@datasorcerer.com' || user?.user_metadata?.role === 'admin';
+  const isAdmin = user?.email === 'admin@datasorcerer.com' || 
+                  user?.email === 'admin@datacsv.com' ||  // Add your email here
+                  user?.email === 'hartmath@gmail.com' ||  // Add your email here
+                  user?.user_metadata?.role === 'admin';
 
   return (
     <div className="relative" ref={menuRef}>
