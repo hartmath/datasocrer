@@ -1,17 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { 
-  Save, Upload, Eye, EyeOff, RefreshCw, Type, Image, Code, Search, X, 
-  ImageIcon, Link2, Download, Plus, Settings, FileText, Globe, Home, 
-  Users, ShoppingCart, BarChart3, Calendar, Mail, Phone, MapPin, Edit3,
-  Trash2, Copy, MoreVertical, Filter, SortAsc, Grid, List, ChevronDown,
-  CheckCircle, AlertCircle, Clock, Tag, Folder, BookOpen, Layout
+  Save, Upload, Eye, EyeOff, Type, Image, Code, Search, 
+  Download, Plus, FileText, Home, 
+  Users, Mail, Trash2, MoreVertical, SortAsc, Grid, List, ChevronDown,
+  Folder, Layout
 } from 'lucide-react';
 import { useContent } from '../../contexts/ContentContext';
-import { useAuth } from '../../contexts/AuthContext';
 
 const ContentManagement = () => {
   const { content, updateContent, saveContent, loading, hasChanges } = useContent();
-  const { user } = useAuth();
   const [selectedSection, setSelectedSection] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
@@ -20,9 +17,7 @@ const ContentManagement = () => {
   const [sortBy, setSortBy] = useState<'label' | 'section' | 'updated'>('label');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [filterType, setFilterType] = useState<'all' | 'text' | 'image' | 'html'>('all');
-  const [showBulkActions, setShowBulkActions] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [editingItem, setEditingItem] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newItem, setNewItem] = useState({
     key: '',
@@ -33,8 +28,6 @@ const ContentManagement = () => {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
-  const [imagePreview, setImagePreview] = useState<{[key: string]: string}>({});
 
   // Get unique sections
   const sections = ['All', ...Array.from(new Set(content.map(item => item.section)))];
@@ -61,8 +54,8 @@ const ContentManagement = () => {
           comparison = a.section.localeCompare(b.section);
           break;
         case 'updated':
-          comparison = new Date(a.updatedAt || a.created_at || '').getTime() - 
-                      new Date(b.updatedAt || b.created_at || '').getTime();
+          comparison = new Date(a.updatedAt || '').getTime() - 
+                      new Date(b.updatedAt || '').getTime();
           break;
       }
       return sortOrder === 'asc' ? comparison : -comparison;
@@ -90,25 +83,13 @@ const ContentManagement = () => {
         return;
       }
 
-      setUploadingImages(prev => new Set(prev).add(key));
-      
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
         updateContent(key, result);
-        setUploadingImages(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(key);
-          return newSet;
-        });
       };
       reader.onerror = () => {
         alert('Error reading file. Please try again.');
-        setUploadingImages(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(key);
-          return newSet;
-        });
       };
       reader.readAsDataURL(file);
     }
@@ -168,13 +149,6 @@ const ContentManagement = () => {
     });
   };
 
-  const selectAllItems = () => {
-    if (selectedItems.size === filteredContent.length) {
-      setSelectedItems(new Set());
-    } else {
-      setSelectedItems(new Set(filteredContent.map(item => item.key)));
-    }
-  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -215,14 +189,6 @@ const ContentManagement = () => {
       alert('A content item with this key already exists');
       return;
     }
-
-    // Add new item to content
-    const newContentItem = {
-      ...newItem,
-      id: `new-${Date.now()}`,
-      created_at: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
 
     // This would need to be implemented in the ContentContext
     // For now, we'll just close the modal
