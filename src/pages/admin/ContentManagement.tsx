@@ -1,5 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Save, Upload, Eye, EyeOff, RefreshCw, Type, Image, Code, Search, X, ImageIcon, Link2, Download } from 'lucide-react';
+import { 
+  Save, Upload, Eye, EyeOff, RefreshCw, Type, Image, Code, Search, X, 
+  ImageIcon, Link2, Download, Plus, Settings, FileText, Globe, Home, 
+  Users, ShoppingCart, BarChart3, Calendar, Mail, Phone, MapPin
+} from 'lucide-react';
 import { useContent } from '../../contexts/ContentContext';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -10,6 +14,7 @@ const ContentManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
   const [imagePreview, setImagePreview] = useState<{[key: string]: string}>({});
@@ -120,14 +125,25 @@ const ContentManagement = () => {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'text':
-        return <Type className="w-4 h-4 text-blue-500" />;
+        return <Type className="w-5 h-5 text-blue-500" />;
       case 'image':
-        return <Image className="w-4 h-4 text-green-500" />;
+        return <Image className="w-5 h-5 text-green-500" />;
       case 'html':
-        return <Code className="w-4 h-4 text-purple-500" />;
+        return <Code className="w-5 h-5 text-purple-500" />;
       default:
-        return <Type className="w-4 h-4 text-gray-500" />;
+        return <Type className="w-5 h-5 text-gray-500" />;
     }
+  };
+
+  const getSectionIcon = (section: string) => {
+    if (section.includes('Home')) return <Home className="w-4 h-4" />;
+    if (section.includes('Global')) return <Globe className="w-4 h-4" />;
+    if (section.includes('Contact')) return <Mail className="w-4 h-4" />;
+    if (section.includes('About')) return <Users className="w-4 h-4" />;
+    if (section.includes('Marketplace')) return <ShoppingCart className="w-4 h-4" />;
+    if (section.includes('Dashboard')) return <BarChart3 className="w-4 h-4" />;
+    if (section.includes('Intro')) return <Calendar className="w-4 h-4" />;
+    return <FileText className="w-4 h-4" />;
   };
 
   // Check if user is admin
@@ -146,32 +162,35 @@ const ContentManagement = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Content Management</h1>
-              <p className="text-gray-600">Edit front-end text and images across your site</p>
+      {/* WordPress-style Top Bar */}
+      <div className="bg-white border-b border-gray-200 sticky top-20 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-xl font-semibold text-gray-900">Content Editor</h1>
+              <div className="h-6 w-px bg-gray-300"></div>
+              <span className="text-sm text-gray-500">Manage your website content</span>
             </div>
-            <div className="flex space-x-3">
+            
+            <div className="flex items-center space-x-3">
               <button
                 onClick={() => setPreviewMode(!previewMode)}
-                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   previewMode 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    ? 'bg-blue-100 text-blue-700' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 {previewMode ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                {previewMode ? 'Edit Mode' : 'Preview Mode'}
+                {previewMode ? 'Preview' : 'Preview'}
               </button>
+              
               <button
                 onClick={handleSave}
                 disabled={loading || !hasChanges}
-                className={`flex items-center px-6 py-2 rounded-lg font-medium transition-all duration-300 ${
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                   hasChanges
-                    ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg shadow-green-500/25'
+                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-sm'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
               >
@@ -180,163 +199,200 @@ const ContentManagement = () => {
                 ) : (
                   <Save className="w-4 h-4 mr-2" />
                 )}
-                {loading ? 'Saving...' : hasChanges ? 'Save Changes' : 'No Changes'}
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
+        </div>
+      </div>
 
-          {hasChanges && (
-            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-800 text-sm">
-                ⚠️ You have unsaved changes. Remember to save your changes before leaving this page.
-              </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* WordPress-style Notice Bar */}
+        {hasChanges && (
+          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">
+                  <strong>Unsaved changes detected.</strong> Remember to save your changes before leaving this page.
+                </p>
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* Page Guide */}
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">📝 How to Edit Your Website Content</h3>
-          <div className="text-blue-800 text-sm space-y-1">
-            <p>• <strong>Content is organized by pages/routes</strong> - Find exactly what you want to edit</p>
-            <p>• <strong>Each label explains where it appears</strong> - No guessing about what you're editing</p>
-            <p>• <strong>Changes appear immediately</strong> - Edit and see results in real-time</p>
-            <p>• <strong>Don't forget to save!</strong> - Click "Save Changes" when you're done</p>
           </div>
-        </div>
+        )}
 
-        {/* Filters */}
-        <div className="mb-6 flex flex-col lg:flex-row gap-4">
-          {/* Section Filter */}
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              🗂️ Filter by Page/Section 
-              <span className="text-gray-500 font-normal">(Choose which part of your site to edit)</span>
-            </label>
-            <select
-              value={selectedSection}
-              onChange={(e) => setSelectedSection(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            >
-              {sections.map(section => (
-                <option key={section} value={section}>
-                  {section === 'All' ? '🌐 All Content' : 
-                   section.includes('Home Page') ? '🏠 ' + section :
-                   section.includes('Global') ? '🌍 ' + section :
-                   section.includes('Page') ? '📄 ' + section :
-                   section.includes('Intro') ? '🎬 ' + section :
-                   '📝 ' + section}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* WordPress-style Filters */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Section Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Page/Section
+              </label>
+              <select
+                value={selectedSection}
+                onChange={(e) => setSelectedSection(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+                {sections.map(section => (
+                  <option key={section} value={section}>
+                    {section === 'All' ? 'All Content' : section}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Search */}
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              🔍 Search Content 
-              <span className="text-gray-500 font-normal">(Find specific text or labels)</span>
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by label, key, or content..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Search Content
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by label or content..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* View Mode */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                View Mode
+              </label>
+              <div className="flex border border-gray-300 rounded-md">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  List
+                </button>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Grid
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Quick Stats */}
-          <div className="lg:w-64">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              📊 Content Summary
-            </label>
-            <div className="bg-gray-100 rounded-lg p-3 text-sm">
-              <div className="flex justify-between">
-                <span>Total Items:</span>
-                <span className="font-semibold">{content.length}</span>
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <div className="flex items-center space-x-6">
+                <span>Total Items: <strong className="text-gray-900">{content.length}</strong></span>
+                <span>Showing: <strong className="text-green-600">{filteredContent.length}</strong></span>
+                {hasChanges && (
+                  <span className="text-orange-600 font-medium">⚠️ Unsaved changes</span>
+                )}
               </div>
-              <div className="flex justify-between">
-                <span>Showing:</span>
-                <span className="font-semibold text-green-600">{filteredContent.length}</span>
+              <div className="text-xs text-gray-500">
+                Last updated: {new Date().toLocaleDateString()}
               </div>
-              {hasChanges && (
-                <div className="mt-2 text-orange-600 font-medium">
-                  ⚠️ Unsaved changes
-                </div>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Content Items */}
-        <div className="space-y-4">
+        {/* WordPress-style Content Grid */}
+        <div className={`grid gap-6 ${
+          viewMode === 'grid' 
+            ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
+            : 'grid-cols-1'
+        }`}>
           {filteredContent.map((item) => {
             const isExpanded = expandedItems.has(item.id);
             
             return (
-              <div key={item.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
-                {/* Header */}
+              <div key={item.id} className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${
+                viewMode === 'grid' ? 'h-fit' : ''
+              }`}>
+                {/* WordPress-style Card Header */}
                 <div 
-                  className="p-4 cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100"
+                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
+                    viewMode === 'list' ? 'border-b border-gray-100' : ''
+                  }`}
                   onClick={() => toggleExpanded(item.id)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3 flex-1">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 mt-1">
                       {getTypeIcon(item.type)}
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-semibold text-gray-900">{item.label}</h3>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            item.type === 'text' ? 'bg-blue-100 text-blue-800' :
-                            item.type === 'image' ? 'bg-green-100 text-green-800' :
-                            'bg-purple-100 text-purple-800'
-                          }`}>
-                            {item.type.toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-1">{item.section}</p>
-                        {item.type === 'text' && (
-                          <p className="text-xs text-gray-500 line-clamp-1">
-                            Current: "{item.value.length > 50 ? item.value.substring(0, 50) + '...' : item.value}"
-                          </p>
-                        )}
-                        {item.type === 'image' && (
-                          <p className="text-xs text-gray-500">
-                            Image: {item.value ? '✅ Set' : '❌ Not set'}
-                          </p>
-                        )}
-                      </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="text-right">
-                        <div className="text-xs text-gray-400">
-                          Updated: {new Date(item.updatedAt).toLocaleDateString()}
-                        </div>
-                        <div className="text-xs text-green-600 font-medium">
-                          Click to {isExpanded ? 'collapse' : 'edit'}
-                        </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <h3 className="text-sm font-semibold text-gray-900 line-clamp-1">
+                          {item.label}
+                        </h3>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          item.type === 'text' ? 'bg-blue-100 text-blue-800' :
+                          item.type === 'image' ? 'bg-green-100 text-green-800' :
+                          'bg-purple-100 text-purple-800'
+                        }`}>
+                          {item.type}
+                        </span>
                       </div>
-                      <div className={`transform transition-transform text-gray-400 ${isExpanded ? 'rotate-180' : ''}`}>
-                        ▼
+                      
+                      <div className="flex items-center space-x-2 text-xs text-gray-500 mb-2">
+                        {getSectionIcon(item.section)}
+                        <span className="line-clamp-1">{item.section}</span>
+                      </div>
+
+                      {item.type === 'text' && (
+                        <p className="text-xs text-gray-600 line-clamp-2">
+                          "{item.value.length > 80 ? item.value.substring(0, 80) + '...' : item.value}"
+                        </p>
+                      )}
+                      
+                      {item.type === 'image' && (
+                        <p className="text-xs text-gray-600">
+                          {item.value ? '✅ Image set' : '❌ No image'}
+                        </p>
+                      )}
+
+                      {item.type === 'html' && (
+                        <p className="text-xs text-gray-600">
+                          HTML content ({item.value.length} characters)
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="flex-shrink-0 text-right">
+                      <div className="text-xs text-gray-400 mb-1">
+                        {new Date(item.updatedAt).toLocaleDateString()}
+                      </div>
+                      <div className="text-xs text-blue-600 font-medium">
+                        {isExpanded ? 'Collapse' : 'Edit'}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Content Editor */}
+                {/* WordPress-style Content Editor */}
                 {isExpanded && (
-                  <div className="p-4">
+                  <div className="p-4 bg-gray-50">
                     {item.type === 'text' && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Content
+                          Content Text
                         </label>
                         {previewMode ? (
-                          <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg min-h-[100px]">
+                          <div className="p-3 bg-white border border-gray-200 rounded-md min-h-[100px]">
                             <p className="text-gray-900">{item.value}</p>
                           </div>
                         ) : (
@@ -344,8 +400,8 @@ const ContentManagement = () => {
                             value={item.value}
                             onChange={(e) => updateContent(item.key, e.target.value)}
                             rows={4}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-vertical"
-                            placeholder="Enter text content..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical text-sm"
+                            placeholder="Enter your content here..."
                           />
                         )}
                       </div>
@@ -354,29 +410,26 @@ const ContentManagement = () => {
                     {item.type === 'image' && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-3">
-                          🖼️ Image Management
-                          <span className="block text-xs text-gray-500 font-normal mt-1">
-                            Upload files or use image URLs. Supports JPG, PNG, GIF (max 5MB)
-                          </span>
+                          Image Management
                         </label>
                         
                         <div className="space-y-4">
-                          {/* Current Image Preview */}
+                          {/* Current Image */}
                           {item.value && (
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <div className="bg-white border border-gray-200 rounded-md p-4">
                               <div className="flex items-start space-x-4">
                                 <div className="relative">
                                   <img 
                                     src={item.value} 
                                     alt={item.label}
-                                    className="w-24 h-24 object-cover rounded-lg border border-gray-300 shadow-sm"
+                                    className="w-20 h-20 object-cover rounded-md border border-gray-300"
                                     onError={(e) => {
-                                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0zMiAzMkw2NCA2NE02NCAzMkwzMiA2NCIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K';
+                                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNyAyN0w1MyA1M001MyAyN0wyNyA1MyIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K';
                                     }}
                                   />
                                   {uploadingImages.has(item.key) && (
-                                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
-                                      <RefreshCw className="w-6 h-6 text-white animate-spin" />
+                                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-md flex items-center justify-center">
+                                      <RefreshCw className="w-5 h-5 text-white animate-spin" />
                                     </div>
                                   )}
                                 </div>
@@ -402,14 +455,9 @@ const ContentManagement = () => {
                                       </button>
                                     </div>
                                   </div>
-                                  <p className="text-xs text-gray-500 break-all bg-white px-2 py-1 rounded border">
-                                    {item.value.startsWith('data:') ? 'Uploaded file (Base64)' : item.value}
+                                  <p className="text-xs text-gray-500 break-all bg-gray-100 px-2 py-1 rounded">
+                                    {item.value.startsWith('data:') ? 'Uploaded file' : item.value}
                                   </p>
-                                  {item.value.startsWith('data:') && (
-                                    <div className="mt-1 text-xs text-gray-400">
-                                      Size: ~{Math.round(item.value.length * 0.75 / 1024)}KB
-                                    </div>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -418,7 +466,7 @@ const ContentManagement = () => {
                           {/* Upload Options */}
                           {!previewMode && (
                             <div className="space-y-3">
-                              <div className="grid md:grid-cols-2 gap-3">
+                              <div className="grid grid-cols-2 gap-3">
                                 {/* File Upload */}
                                 <div>
                                   <input
@@ -432,24 +480,24 @@ const ContentManagement = () => {
                                   <button
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={uploadingImages.has(item.key)}
-                                    className="w-full flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 border-2 border-dashed border-green-300 hover:border-green-500"
+                                    className="w-full flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 text-sm"
                                   >
                                     {uploadingImages.has(item.key) ? (
                                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                                     ) : (
                                       <Upload className="w-4 h-4 mr-2" />
                                     )}
-                                    {uploadingImages.has(item.key) ? 'Uploading...' : 'Upload File'}
+                                    Upload
                                   </button>
                                 </div>
                                 
-                                {/* Image URL Input */}
+                                {/* Image URL */}
                                 <div>
                                   <div className="flex">
                                     <input
                                       type="url"
-                                      placeholder="https://example.com/image.jpg"
-                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                                      placeholder="Image URL"
+                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                       onKeyPress={(e) => {
                                         if (e.key === 'Enter') {
                                           handleImageUrl(item.key, e.currentTarget.value);
@@ -463,34 +511,22 @@ const ContentManagement = () => {
                                         handleImageUrl(item.key, input.value);
                                         input.value = '';
                                       }}
-                                      className="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors"
+                                      className="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 transition-colors"
                                     >
                                       <Link2 className="w-4 h-4" />
                                     </button>
                                   </div>
-                                  <p className="text-xs text-gray-500 mt-1">Or paste an image URL and press Enter</p>
                                 </div>
-                              </div>
-                              
-                              {/* Image Requirements */}
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                <h4 className="text-sm font-medium text-blue-900 mb-2">📋 Image Requirements</h4>
-                                <ul className="text-xs text-blue-800 space-y-1">
-                                  <li>• <strong>Formats:</strong> JPG, PNG, GIF, WebP, SVG</li>
-                                  <li>• <strong>Size:</strong> Maximum 5MB per file</li>
-                                  <li>• <strong>Dimensions:</strong> Recommended 1200x600px for best quality</li>
-                                  <li>• <strong>Usage:</strong> Files are stored as Base64 or URL links</li>
-                                </ul>
                               </div>
                             </div>
                           )}
                           
                           {/* No Image State */}
                           {!item.value && (
-                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                              <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                            <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center">
+                              <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                               <p className="text-gray-500 text-sm">No image set</p>
-                              <p className="text-gray-400 text-xs">Upload a file or add an image URL above</p>
+                              <p className="text-gray-400 text-xs">Upload a file or add an image URL</p>
                             </div>
                           )}
                         </div>
@@ -504,7 +540,7 @@ const ContentManagement = () => {
                         </label>
                         {previewMode ? (
                           <div 
-                            className="p-3 bg-gray-50 border border-gray-200 rounded-lg min-h-[100px]"
+                            className="p-3 bg-white border border-gray-200 rounded-md min-h-[100px]"
                             dangerouslySetInnerHTML={{ __html: item.value }}
                           />
                         ) : (
@@ -512,7 +548,7 @@ const ContentManagement = () => {
                             value={item.value}
                             onChange={(e) => updateContent(item.key, e.target.value)}
                             rows={6}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm resize-vertical"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-vertical"
                             placeholder="Enter HTML content..."
                           />
                         )}
@@ -527,7 +563,11 @@ const ContentManagement = () => {
 
         {filteredContent.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No content items found matching your criteria.</p>
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <FileText className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500 text-lg">No content items found</p>
+            <p className="text-gray-400 text-sm">Try adjusting your search or filter criteria</p>
           </div>
         )}
       </div>
