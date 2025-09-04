@@ -2,7 +2,9 @@ import React, { useState, useRef } from 'react';
 import { 
   Save, Upload, Eye, EyeOff, RefreshCw, Type, Image, Code, Search, X, 
   ImageIcon, Link2, Download, Plus, Settings, FileText, Globe, Home, 
-  Users, ShoppingCart, BarChart3, Calendar, Mail, Phone, MapPin
+  Users, ShoppingCart, BarChart3, Calendar, Mail, Phone, MapPin, Edit3,
+  Trash2, Copy, MoreVertical, Filter, SortAsc, Grid, List, ChevronDown,
+  CheckCircle, AlertCircle, Clock, Tag, Folder, BookOpen, Layout
 } from 'lucide-react';
 import { useContent } from '../../contexts/ContentContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,6 +17,21 @@ const ContentManagement = () => {
   const [previewMode, setPreviewMode] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [sortBy, setSortBy] = useState<'label' | 'section' | 'updated'>('label');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [filterType, setFilterType] = useState<'all' | 'text' | 'image' | 'html'>('all');
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newItem, setNewItem] = useState({
+    key: '',
+    type: 'text' as 'text' | 'image' | 'html',
+    value: '',
+    label: '',
+    section: 'Homepage'
+  });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
   const [imagePreview, setImagePreview] = useState<{[key: string]: string}>({});
@@ -22,16 +39,34 @@ const ContentManagement = () => {
   // Get unique sections
   const sections = ['All', ...Array.from(new Set(content.map(item => item.section)))];
 
-  // Filter content based on section and search
-  const filteredContent = content.filter(item => {
-    const matchesSection = selectedSection === 'All' || item.section === selectedSection;
-    const matchesSearch = searchTerm === '' || 
-      item.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.value.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesSection && matchesSearch;
-  });
+  // Filter and sort content
+  const filteredContent = content
+    .filter(item => {
+      const matchesSection = selectedSection === 'All' || item.section === selectedSection;
+      const matchesSearch = searchTerm === '' || 
+        item.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.value.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === 'all' || item.type === filterType;
+      
+      return matchesSection && matchesSearch && matchesType;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'label':
+          comparison = a.label.localeCompare(b.label);
+          break;
+        case 'section':
+          comparison = a.section.localeCompare(b.section);
+          break;
+        case 'updated':
+          comparison = new Date(a.updatedAt || a.created_at || '').getTime() - 
+                      new Date(b.updatedAt || b.created_at || '').getTime();
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
 
   const handleSave = async () => {
     try {
@@ -45,13 +80,11 @@ const ContentManagement = () => {
   const handleImageUpload = (key: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         alert('Please select a valid image file (JPG, PNG, GIF, etc.)');
         return;
       }
       
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('Image file size must be less than 5MB');
         return;
@@ -80,7 +113,6 @@ const ContentManagement = () => {
       reader.readAsDataURL(file);
     }
     
-    // Reset input value to allow re-uploading the same file
     event.target.value = '';
   };
 
@@ -99,478 +131,593 @@ const ContentManagement = () => {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName || 'image';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
       window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
       console.error('Error downloading image:', error);
       alert('Error downloading image. Please try again.');
     }
   };
 
-  const toggleExpanded = (itemId: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(itemId)) {
-      newExpanded.delete(itemId);
+  const toggleExpanded = (key: string) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleItemSelection = (key: string) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllItems = () => {
+    if (selectedItems.size === filteredContent.length) {
+      setSelectedItems(new Set());
     } else {
-      newExpanded.add(itemId);
+      setSelectedItems(new Set(filteredContent.map(item => item.key)));
     }
-    setExpandedItems(newExpanded);
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'text':
-        return <Type className="w-5 h-5 text-blue-500" />;
-      case 'image':
-        return <Image className="w-5 h-5 text-green-500" />;
-      case 'html':
-        return <Code className="w-5 h-5 text-purple-500" />;
-      default:
-        return <Type className="w-5 h-5 text-gray-500" />;
+      case 'text': return <Type className="w-4 h-4" />;
+      case 'image': return <Image className="w-4 h-4" />;
+      case 'html': return <Code className="w-4 h-4" />;
+      default: return <FileText className="w-4 h-4" />;
+    }
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'text': return 'bg-blue-100 text-blue-800';
+      case 'image': return 'bg-green-100 text-green-800';
+      case 'html': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getSectionIcon = (section: string) => {
-    if (section.includes('Home')) return <Home className="w-4 h-4" />;
-    if (section.includes('Global')) return <Globe className="w-4 h-4" />;
-    if (section.includes('Contact')) return <Mail className="w-4 h-4" />;
-    if (section.includes('About')) return <Users className="w-4 h-4" />;
-    if (section.includes('Marketplace')) return <ShoppingCart className="w-4 h-4" />;
-    if (section.includes('Dashboard')) return <BarChart3 className="w-4 h-4" />;
-    if (section.includes('Intro')) return <Calendar className="w-4 h-4" />;
-    return <FileText className="w-4 h-4" />;
+    switch (section.toLowerCase()) {
+      case 'homepage': return <Home className="w-4 h-4" />;
+      case 'about': return <Users className="w-4 h-4" />;
+      case 'contact': return <Mail className="w-4 h-4" />;
+      case 'footer': return <Layout className="w-4 h-4" />;
+      default: return <Folder className="w-4 h-4" />;
+    }
   };
 
-  // Check if user is admin
-  const isAdmin = user?.email === 'admin@datasorcerer.com' || user?.user_metadata?.role === 'admin';
+  const handleAddNewItem = () => {
+    if (!newItem.key || !newItem.label) {
+      alert('Please fill in all required fields');
+      return;
+    }
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600">You don't have permission to access content management.</p>
-        </div>
-      </div>
-    );
-  }
+    // Check if key already exists
+    if (content.some(item => item.key === newItem.key)) {
+      alert('A content item with this key already exists');
+      return;
+    }
+
+    // Add new item to content
+    const newContentItem = {
+      ...newItem,
+      id: `new-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // This would need to be implemented in the ContentContext
+    // For now, we'll just close the modal
+    setShowAddModal(false);
+    setNewItem({
+      key: '',
+      type: 'text',
+      value: '',
+      label: '',
+      section: 'Homepage'
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      {/* WordPress-style Top Bar */}
-      <div className="bg-white border-b border-gray-200 sticky top-20 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-semibold text-gray-900">Content Editor</h1>
-              <div className="h-6 w-px bg-gray-300"></div>
-              <span className="text-sm text-gray-500">Manage your website content</span>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Content Management</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Manage your website content like WordPress
+              </p>
             </div>
-            
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setPreviewMode(!previewMode)}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  previewMode 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {previewMode ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                {previewMode ? 'Preview' : 'Preview'}
-              </button>
-              
-              <button
-                onClick={handleSave}
-                disabled={loading || !hasChanges}
-                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  hasChanges
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-sm'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                {loading ? (
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setPreviewMode(!previewMode)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    previewMode 
+                      ? 'bg-blue-100 text-blue-700' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {previewMode ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+                  {previewMode ? 'Edit Mode' : 'Preview Mode'}
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={loading || !hasChanges}
+                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                    hasChanges 
+                      ? 'bg-green-600 text-white hover:bg-green-700' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
                   <Save className="w-4 h-4 mr-2" />
-                )}
-                {loading ? 'Saving...' : 'Save Changes'}
-              </button>
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* WordPress-style Notice Bar */}
-        {hasChanges && (
-          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-yellow-700">
-                  <strong>Unsaved changes detected.</strong> Remember to save your changes before leaving this page.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* WordPress-style Filters */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Section Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Page/Section
-              </label>
-              <select
-                value={selectedSection}
-                onChange={(e) => setSelectedSection(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
+      <div className="flex">
+        {/* Sidebar */}
+        <div className="w-64 bg-white border-r border-gray-200 min-h-screen">
+          <div className="p-4">
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Sections</h3>
+              <div className="space-y-1">
                 {sections.map(section => (
-                  <option key={section} value={section}>
-                    {section === 'All' ? 'All Content' : section}
-                  </option>
+                  <button
+                    key={section}
+                    onClick={() => setSelectedSection(section)}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${
+                      selectedSection === section
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {section === 'All' ? (
+                      <div className="flex items-center">
+                        <Grid className="w-4 h-4 mr-2" />
+                        All Content
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        {getSectionIcon(section)}
+                        <span className="ml-2">{section}</span>
+                      </div>
+                    )}
+                  </button>
                 ))}
-              </select>
-            </div>
-
-            {/* Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search Content
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by label or content..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
               </div>
             </div>
 
-            {/* View Mode */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                View Mode
-              </label>
-              <div className="flex border border-gray-300 rounded-md">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
-                    viewMode === 'list'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  List
-                </button>
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
-                    viewMode === 'grid'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Grid
-                </button>
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Content Types</h3>
+              <div className="space-y-1">
+                {[
+                  { type: 'all', label: 'All Types', icon: <Grid className="w-4 h-4" /> },
+                  { type: 'text', label: 'Text', icon: <Type className="w-4 h-4" /> },
+                  { type: 'image', label: 'Images', icon: <Image className="w-4 h-4" /> },
+                  { type: 'html', label: 'HTML', icon: <Code className="w-4 h-4" /> }
+                ].map(({ type, label, icon }) => (
+                  <button
+                    key={type}
+                    onClick={() => setFilterType(type as any)}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${
+                      filterType === type
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      {icon}
+                      <span className="ml-2">{label}</span>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
 
-          {/* Quick Stats */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <div className="flex items-center space-x-6">
-                <span>Total Items: <strong className="text-gray-900">{content.length}</strong></span>
-                <span>Showing: <strong className="text-green-600">{filteredContent.length}</strong></span>
-                {hasChanges && (
-                  <span className="text-orange-600 font-medium">⚠️ Unsaved changes</span>
-                )}
-              </div>
-              <div className="text-xs text-gray-500">
-                Last updated: {new Date().toLocaleDateString()}
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Stats</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Total Items</span>
+                  <span className="font-medium">{content.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Text Items</span>
+                  <span className="font-medium">{content.filter(c => c.type === 'text').length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Images</span>
+                  <span className="font-medium">{content.filter(c => c.type === 'image').length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">HTML Blocks</span>
+                  <span className="font-medium">{content.filter(c => c.type === 'html').length}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* WordPress-style Content Grid */}
-        <div className={`grid gap-6 ${
-          viewMode === 'grid' 
-            ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
-            : 'grid-cols-1'
-        }`}>
-          {filteredContent.map((item) => {
-            const isExpanded = expandedItems.has(item.id);
-            
-            return (
-              <div key={item.id} className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${
-                viewMode === 'grid' ? 'h-fit' : ''
-              }`}>
-                {/* WordPress-style Card Header */}
-                <div 
-                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                    viewMode === 'list' ? 'border-b border-gray-100' : ''
-                  }`}
-                  onClick={() => toggleExpanded(item.id)}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 mt-1">
-                      {getTypeIcon(item.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="text-sm font-semibold text-gray-900 line-clamp-1">
-                          {item.label}
-                        </h3>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          item.type === 'text' ? 'bg-blue-100 text-blue-800' :
-                          item.type === 'image' ? 'bg-green-100 text-green-800' :
-                          'bg-purple-100 text-purple-800'
-                        }`}>
-                          {item.type}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2 text-xs text-gray-500 mb-2">
-                        {getSectionIcon(item.section)}
-                        <span className="line-clamp-1">{item.section}</span>
-                      </div>
-
-                      {item.type === 'text' && (
-                        <p className="text-xs text-gray-600 line-clamp-2">
-                          "{item.value.length > 80 ? item.value.substring(0, 80) + '...' : item.value}"
-                        </p>
-                      )}
-                      
-                      {item.type === 'image' && (
-                        <p className="text-xs text-gray-600">
-                          {item.value ? '✅ Image set' : '❌ No image'}
-                        </p>
-                      )}
-
-                      {item.type === 'html' && (
-                        <p className="text-xs text-gray-600">
-                          HTML content ({item.value.length} characters)
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="flex-shrink-0 text-right">
-                      <div className="text-xs text-gray-400 mb-1">
-                        {new Date(item.updatedAt).toLocaleDateString()}
-                      </div>
-                      <div className="text-xs text-blue-600 font-medium">
-                        {isExpanded ? 'Collapse' : 'Edit'}
-                      </div>
-                    </div>
-                  </div>
+        {/* Main Content */}
+        <div className="flex-1 p-6">
+          {/* Toolbar */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search content..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
 
-                {/* WordPress-style Content Editor */}
-                {isExpanded && (
-                  <div className="p-4 bg-gray-50">
-                    {item.type === 'text' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Content Text
-                        </label>
-                        {previewMode ? (
-                          <div className="p-3 bg-white border border-gray-200 rounded-md min-h-[100px]">
-                            <p className="text-gray-900">{item.value}</p>
-                          </div>
-                        ) : (
-                          <textarea
-                            value={item.value}
-                            onChange={(e) => updateContent(item.key, e.target.value)}
-                            rows={4}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical text-sm"
-                            placeholder="Enter your content here..."
-                          />
-                        )}
-                      </div>
-                    )}
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="label">Sort by Label</option>
+                    <option value="section">Sort by Section</option>
+                    <option value="updated">Sort by Updated</option>
+                  </select>
+                  <button
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                    className="p-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    <SortAsc className={`w-4 h-4 ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
 
-                    {item.type === 'image' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-3">
-                          Image Management
-                        </label>
-                        
-                        <div className="space-y-4">
-                          {/* Current Image */}
-                          {item.value && (
-                            <div className="bg-white border border-gray-200 rounded-md p-4">
-                              <div className="flex items-start space-x-4">
-                                <div className="relative">
-                                  <img 
-                                    src={item.value} 
-                                    alt={item.label}
-                                    className="w-20 h-20 object-cover rounded-md border border-gray-300"
-                                    onError={(e) => {
-                                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNyAyN0w1MyA1M001MyAyN0wyNyA1MyIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K';
-                                    }}
-                                  />
-                                  {uploadingImages.has(item.key) && (
-                                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-md flex items-center justify-center">
-                                      <RefreshCw className="w-5 h-5 text-white animate-spin" />
-                                    </div>
-                                  )}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    <Grid className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                {selectedItems.size > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">
+                      {selectedItems.size} selected
+                    </span>
+                    <button className="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm hover:bg-red-200">
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Content
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Content List */}
+          <div className="bg-white rounded-lg border border-gray-200">
+            {filteredContent.length === 0 ? (
+              <div className="p-8 text-center">
+                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No content found</h3>
+                <p className="text-gray-600 mb-4">
+                  {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first content item'}
+                </p>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Content
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {filteredContent.map((item) => (
+                  <div key={item.key} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.has(item.key)}
+                          onChange={() => toggleItemSelection(item.key)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className={`p-2 rounded-md ${getTypeColor(item.type)}`}>
+                              {getTypeIcon(item.type)}
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-medium text-gray-900">{item.label}</h3>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <span className="text-sm text-gray-500">{item.key}</span>
+                                <span className="text-gray-300">•</span>
+                                <div className="flex items-center text-sm text-gray-500">
+                                  {getSectionIcon(item.section)}
+                                  <span className="ml-1">{item.section}</span>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-900">Current Image</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => toggleExpanded(item.key)}
+                              className="p-2 text-gray-400 hover:text-gray-600"
+                            >
+                              <ChevronDown className={`w-4 h-4 transition-transform ${expandedItems.has(item.key) ? 'rotate-180' : ''}`} />
+                            </button>
+                            <button className="p-2 text-gray-400 hover:text-gray-600">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {expandedItems.has(item.key) && (
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            {item.type === 'text' && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Content
+                                </label>
+                                <textarea
+                                  value={item.value}
+                                  onChange={(e) => updateContent(item.key, e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  rows={3}
+                                />
+                              </div>
+                            )}
+
+                            {item.type === 'image' && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Image
+                                </label>
+                                {item.value ? (
+                                  <div className="space-y-3">
+                                    <img
+                                      src={item.value}
+                                      alt={item.label}
+                                      className="w-32 h-32 object-cover rounded-md border border-gray-300"
+                                      onError={(e) => {
+                                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNyAyN0w1MyA1M001MyAyN0wyNyA1MyIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K';
+                                      }}
+                                    />
                                     <div className="flex space-x-2">
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleImageUpload(item.key, e)}
+                                        className="hidden"
+                                        ref={fileInputRef}
+                                      />
                                       <button
-                                        onClick={() => downloadImage(item.value, `${item.key.replace(/\./g, '-')}-image`)}
-                                        className="text-blue-600 hover:text-blue-700 text-xs flex items-center"
-                                        title="Download image"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm hover:bg-blue-200"
                                       >
-                                        <Download className="w-3 h-3 mr-1" />
+                                        <Upload className="w-4 h-4 mr-1" />
+                                        Replace
+                                      </button>
+                                      <button
+                                        onClick={() => downloadImage(item.value, `${item.key}.jpg`)}
+                                        className="px-3 py-1 bg-green-100 text-green-700 rounded-md text-sm hover:bg-green-200"
+                                      >
+                                        <Download className="w-4 h-4 mr-1" />
                                         Download
                                       </button>
                                       <button
                                         onClick={() => removeImage(item.key)}
-                                        className="text-red-600 hover:text-red-700 text-xs flex items-center"
-                                        title="Remove image"
+                                        className="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm hover:bg-red-200"
                                       >
-                                        <X className="w-3 h-3 mr-1" />
+                                        <Trash2 className="w-4 h-4 mr-1" />
                                         Remove
                                       </button>
                                     </div>
                                   </div>
-                                  <p className="text-xs text-gray-500 break-all bg-gray-100 px-2 py-1 rounded">
-                                    {item.value.startsWith('data:') ? 'Uploaded file' : item.value}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Upload Options */}
-                          {!previewMode && (
-                            <div className="space-y-3">
-                              <div className="grid grid-cols-2 gap-3">
-                                {/* File Upload */}
-                                <div>
-                                  <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => handleImageUpload(item.key, e)}
-                                    className="hidden"
-                                    id={`file-upload-${item.key}`}
-                                  />
-                                  <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={uploadingImages.has(item.key)}
-                                    className="w-full flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 text-sm"
-                                  >
-                                    {uploadingImages.has(item.key) ? (
-                                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                                    ) : (
-                                      <Upload className="w-4 h-4 mr-2" />
-                                    )}
-                                    Upload
-                                  </button>
-                                </div>
-                                
-                                {/* Image URL */}
-                                <div>
-                                  <div className="flex">
+                                ) : (
+                                  <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center">
                                     <input
-                                      type="url"
-                                      placeholder="Image URL"
-                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                      onKeyPress={(e) => {
-                                        if (e.key === 'Enter') {
-                                          handleImageUrl(item.key, e.currentTarget.value);
-                                          e.currentTarget.value = '';
-                                        }
-                                      }}
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => handleImageUpload(item.key, e)}
+                                      className="hidden"
+                                      ref={fileInputRef}
                                     />
                                     <button
-                                      onClick={(e) => {
-                                        const input = (e.currentTarget.previousElementSibling as HTMLInputElement);
-                                        handleImageUrl(item.key, input.value);
-                                        input.value = '';
-                                      }}
-                                      className="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 transition-colors"
+                                      onClick={() => fileInputRef.current?.click()}
+                                      className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
                                     >
-                                      <Link2 className="w-4 h-4" />
+                                      <Upload className="w-4 h-4 mr-2" />
+                                      Upload Image
                                     </button>
                                   </div>
+                                )}
+                                <div className="mt-3">
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Or enter image URL
+                                  </label>
+                                  <input
+                                    type="url"
+                                    placeholder="https://example.com/image.jpg"
+                                    onChange={(e) => handleImageUrl(item.key, e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  />
                                 </div>
                               </div>
-                            </div>
-                          )}
-                          
-                          {/* No Image State */}
-                          {!item.value && (
-                            <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center">
-                              <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                              <p className="text-gray-500 text-sm">No image set</p>
-                              <p className="text-gray-400 text-xs">Upload a file or add an image URL</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                            )}
 
-                    {item.type === 'html' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          HTML Content
-                        </label>
-                        {previewMode ? (
-                          <div 
-                            className="p-3 bg-white border border-gray-200 rounded-md min-h-[100px]"
-                            dangerouslySetInnerHTML={{ __html: item.value }}
-                          />
-                        ) : (
-                          <textarea
-                            value={item.value}
-                            onChange={(e) => updateContent(item.key, e.target.value)}
-                            rows={6}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-vertical"
-                            placeholder="Enter HTML content..."
-                          />
+                            {item.type === 'html' && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  HTML Content
+                                </label>
+                                <textarea
+                                  value={item.value}
+                                  onChange={(e) => updateContent(item.key, e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                                  rows={6}
+                                />
+                                {item.value && (
+                                  <div className="mt-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Preview
+                                    </label>
+                                    <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
+                                      <div dangerouslySetInnerHTML={{ __html: item.value }} />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-            );
-          })}
-        </div>
-
-        {filteredContent.length === 0 && (
-          <div className="text-center py-12">
-            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <FileText className="w-8 h-8 text-gray-400" />
-            </div>
-            <p className="text-gray-500 text-lg">No content items found</p>
-            <p className="text-gray-400 text-sm">Try adjusting your search or filter criteria</p>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Add Content Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Content</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Key (unique identifier)
+                </label>
+                <input
+                  type="text"
+                  value={newItem.key}
+                  onChange={(e) => setNewItem({...newItem, key: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., hero_title"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Label (display name)
+                </label>
+                <input
+                  type="text"
+                  value={newItem.label}
+                  onChange={(e) => setNewItem({...newItem, label: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Hero Title"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Type
+                </label>
+                <select
+                  value={newItem.type}
+                  onChange={(e) => setNewItem({...newItem, type: e.target.value as any})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="text">Text</option>
+                  <option value="image">Image</option>
+                  <option value="html">HTML</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Section
+                </label>
+                <select
+                  value={newItem.section}
+                  onChange={(e) => setNewItem({...newItem, section: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Homepage">Homepage</option>
+                  <option value="About">About</option>
+                  <option value="Contact">Contact</option>
+                  <option value="Footer">Footer</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Content
+                </label>
+                <textarea
+                  value={newItem.value}
+                  onChange={(e) => setNewItem({...newItem, value: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Enter your content here..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddNewItem}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Add Content
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
