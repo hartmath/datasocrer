@@ -3,12 +3,12 @@ import {
   Save, Upload, Eye, EyeOff, Type, Image, Code, Search, 
   Download, Plus, FileText, Home, 
   Users, Mail, Trash2, MoreVertical, SortAsc, Grid, List, ChevronDown,
-  Folder, Layout
+  Folder, Layout, RefreshCw
 } from 'lucide-react';
 import { useContent } from '../../contexts/ContentContext';
 
 const ContentManagement = () => {
-  const { content, updateContent, saveContent, loading, hasChanges } = useContent();
+  const { content, updateContent, saveContent, loading, hasChanges, refreshContent } = useContent();
   const [selectedSection, setSelectedSection] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
@@ -64,7 +64,9 @@ const ContentManagement = () => {
   const handleSave = async () => {
     try {
       await saveContent();
-      alert('Content saved successfully!');
+      // Refresh content to ensure it's up to date
+      await refreshContent();
+      alert('Content saved successfully! Changes are now live on the website.');
     } catch (error) {
       alert('Error saving content. Please try again.');
     }
@@ -238,6 +240,15 @@ const ContentManagement = () => {
                 >
                   <Save className="w-4 h-4 mr-2" />
                   {loading ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  onClick={refreshContent}
+                  disabled={loading}
+                  className="ml-2 px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500"
+                  title="Refresh content from database"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
                 </button>
               </div>
             </div>
