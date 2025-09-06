@@ -527,6 +527,25 @@ export const ContentProvider: React.FC<ContentProviderProps> = ({ children }) =>
     loadContentFromDatabase();
   }, []);
 
+  // Refresh content when window regains focus (user switches back to tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      loadContentFromDatabase();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  // Periodic refresh every 30 seconds to keep content up to date
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadContentFromDatabase();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   const loadContentFromDatabase = async () => {
     if (!supabase) {
       // Fallback to localStorage if no database connection

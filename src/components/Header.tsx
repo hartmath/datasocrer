@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X } from 'lucide-react';
+import { Search, ShoppingCart, Menu, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCartContext } from '../contexts/CartContext';
 import { useContent } from '../contexts/ContentContext';
@@ -23,7 +23,7 @@ const Header: React.FC<HeaderProps> = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { getCartCount } = useCartContext();
-  const { getContent } = useContent();
+  const { getContent, refreshContent } = useContent();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -163,16 +163,25 @@ const Header: React.FC<HeaderProps> = () => {
               </Link>
               
               {isAdmin && (
-                <Link 
-                  to="/admin" 
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                    isActive('/admin') 
-                      ? 'text-purple-700 bg-purple-50 border border-purple-200' 
-                      : 'text-gray-700 hover:text-purple-700 hover:bg-purple-50'
-                  }`}
-                >
-                  Admin
-                </Link>
+                <>
+                  <button
+                    onClick={refreshContent}
+                    className="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 text-gray-700 hover:text-blue-700 hover:bg-blue-50"
+                    title="Refresh content from database"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                  <Link 
+                    to="/admin" 
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                      isActive('/admin') 
+                        ? 'text-purple-700 bg-purple-50 border border-purple-200' 
+                        : 'text-gray-700 hover:text-purple-700 hover:bg-purple-50'
+                    }`}
+                  >
+                    Admin
+                  </Link>
+                </>
               )}
             </nav>
 
