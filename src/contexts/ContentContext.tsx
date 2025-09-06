@@ -394,7 +394,7 @@ const defaultContent: ContentItem[] = [
     id: '36',
     key: 'footer.copyright',
     type: 'text',
-    value: 'DataCSV',
+    value: '© 2024 DataCSV. All rights reserved.',
     label: 'Footer Copyright Text',
     section: 'Global - Footer',
     updatedAt: new Date().toISOString()
